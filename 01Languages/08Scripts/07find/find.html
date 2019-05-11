@@ -1,1 +1,236 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html style="direction: ltr;" lang="nl-be">
 
+	<head>
+  		<meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
+  		<title>find</title>
+  		<meta content="find" name="description">
+      <!--- 2013/11/04 ===================================================== ---->
+		<link rel="stylesheet" type="text/css" href="../../../styles/topnav.css">
+    	<link rel="stylesheet" type="text/css" href="../../../styles/botnav.css">
+    	<link rel="stylesheet" type="text/css" href="../../../styles/intro.css">
+    	<link rel="stylesheet" type="text/css" href="../../../styles/wat.css">
+	   <link rel="stylesheet" type="text/css" href="../../../styles/menu.css">
+   	<link rel="stylesheet" type="text/css" href="../../../styles/text.css">
+    	<link rel="stylesheet" type="text/css" href="../../../styles/oef.css">
+    	<link rel="stylesheet" type="text/css" href="../../../styles/sam.css">
+    	<link rel="stylesheet" type="text/css" href="../../../styles/lit.css">
+    	<link rel="stylesheet" type="text/css" href="../../../styles/inhoud.css">
+    	<link rel="stylesheet" type="text/css" href="../../../styles/status.css">
+    	<link rel="stylesheet" type="text/css" href="../../../styles/tabs.css">
+    	<link rel="stylesheet" type="text/css" href="../../../styles/skills.css">
+    	<!--- 2013/11/04 ===================================================== ---->
+    	<link rel="shortcut icon" type="image/x-icon" href="../../../images/favicon.ico">
+	</head>
+
+	<body>
+
+
+<!-- top navigation ======================================================================================= -->
+<a name="top"></a>
+<table class="top">
+	<tr>
+		<td class="topLeft">
+		<a href="../scripts.html">
+		<IMG alt="previous.png" src="../../../images/previous.png" width="17" height="18">
+		</a>
+		</td>
+		<td class="topTitle">
+<!-- HTML navigatie ========================================================================================= -->
+<a name="htmlnav"></a>
+<div align="center">
+<table class="inhoud">
+	<tr>	
+		<td class="ititle">
+			<A href="../../languages.html">Languages</A>
+			&nbsp;&nbsp;
+		</td>
+		<td class="icell">
+			<A href="../scripts.html">Scripts</A>
+			&nbsp;&nbsp;
+		</td>
+		<td class="icell">
+			<A href="find.html">find</A>
+			&nbsp;&nbsp;
+		</td>
+	</tr>
+</table>
+</div>
+		</td>
+		<td class="topRight">
+		<IMG alt="sourceview.png" src="../../../images/sourceview.png" width="26" height="26" />
+		</td>
+	</tr>
+</table>
+
+<!-- document text ========================================================== -->
+<br clear="all">
+
+<!-- Introduction ======================================================================================= -->
+<a name="intro"></a>
+<div class="intro">
+<h1 class="intro">
+	<a href="#top">
+	<img alt="up.png" src="../../../images/up.png" width="18" height="17" align="left">
+	</a>
+	find
+	<a href="#bottom">
+	<img alt="down.png" src="../../../images/down.png" width="18" height="17" align="right">
+	</a>
+</h1>
+</div>
+
+<div class="text">
+	<table class="text">
+	<tr>
+		<th class="text">Nr</th>
+		<th class="text">Date</th>
+		<th class="text">Command</th>
+		<th class="text">source</th>
+		<th class="text">Description</th>
+	</tr>
+	<tr>
+		<th class="text">&nbsp;</th>
+		<th class="text">Argument</th>
+		<th class="text">Name</th>
+		<th class="text">&nbsp;</th>
+		<th class="text">&nbsp;</th>
+	</tr>
+	<tr>
+		<td class="cdone">1</td>
+		<td class="text">Sat May 11 15:41:17 2019</td>
+		<td class="ctext">find.sh</td>
+		<td class="text"><a href="01find" target="_blank">01find</a></td>
+		<td class="text">find files recursively into the given directory</td>
+	</tr>
+	<tr>
+		<td class="ctext">$1</td>
+		<td class="text">&nbsp;</td>
+		<td class="text">SILENCE</td>
+		<td class="text" colspan="2">optional 'silence' or 'SILENCE', when set the script will not do 'echo'</td>
+	</tr>
+	<tr>
+		<td class="ctext">$2</td>
+		<td class="text">&nbsp;</td>
+		<td class="text">TAG</td>
+		<td class="text" colspan="2">TAG, the tag used for the 'logger', /var/log/syslog entry</td>
+	</tr>
+	<tr>
+		<td class="ctext">$3</td>
+		<td class="text">&nbsp;</td>
+		<td class="text">DIR</td>
+		<td class="text" colspan="2">DIR, directory to find into</td>
+	</tr>
+	<tr>
+		<td class="ctext">$4</td>
+		<td class="text">&nbsp;</td>
+		<td class="text">ACTION</td>
+		<td class="text" colspan="2">ACTION, the action to perform on each individual file</td>
+	</tr>
+	<tr>
+		<td class="cdone">2</td>
+		<td class="text">Sat May 11 15:58:46 2019</td>
+		<td class="ctext">clean.sh</td>
+		<td class="text"><a href="02clean" target="_blank">02clean</a></td>
+		<td class="text">removes all unwanted files, '*~', '*bak', '*conflicting*', '*dropbox.attr*'</td>
+	</tr>
+	<tr>
+		<td class="ctext">$1</td>
+		<td class="text">&nbsp;</td>
+		<td class="text">SILENCE</td>
+		<td class="text" colspan="2">'silence' or 'SILENCE', optional, when set the script does not 'echo'</td>
+	</tr>
+	<tr>
+		<td class="ctext">$2</td>
+		<td class="text">&nbsp;</td>
+		<td class="text">TAG</td>
+		<td class="text" colspan="2">TAG, the tag to use for the 'logger' command, see /var/log/syslog entries</td>
+	</tr>
+	<tr>
+		<td class="ctext">$3</td>
+		<td class="text">&nbsp;</td>
+		<td class="text">DIR</td>
+		<td class="text" colspan="2">DIR, the directory to clean, recursively</td>
+	</tr>
+	<tr>
+		<td class="text">&nbsp;</td>
+		<td class="text">Example</td>
+		<td class="text" colspan="3">clean.sh silence tag=CLEANIT dir=/data/07Software</td>
+	</tr>
+	</table>
+</div>
+
+<!-- literatuur ======================================================================================= -->
+<a name="lit"></a>
+<div class="lit">
+<h2 class="lit">
+	<a href="#top">
+	<img alt="up.png" src="../../../images/up.png" width="18" height="17" align="left">
+	</a>
+	Literatuur
+	<a href="#bottom">
+	<img alt="down.png" src="../../../images/down.png" width="18" height="17" align="right">
+	</a>
+</h2>
+<ul>
+	<li>
+		<a target="_blank" href="https://www.linode.com/docs/tools-reference/tools/find-files-in-linux-using-the-command-line/">
+			linode: Find Files in Linux, Using the Command Line
+		</a>
+	</li>
+	<li>
+		<a target="_blank" href="https://www.lifewire.com/uses-of-linux-command-find-2201100">
+			lifewire: How to Find a File in Linux Using the Command Line 
+		</a>
+	</li>
+	<li>
+		<a target="_blank" href="http://man7.org/linux/man-pages/man1/find.1.html">
+			man1.org: man find
+		</a>
+	</li>
+	<li>
+		<a target="_blank" href="https://alvinalexander.com/unix/edu/examples/find.shtml">
+			alvinalexander.com: A big collection of Unix/Linux  &lsquo;find&rsquo;command examples
+		</a>
+	</li>
+</ul>
+</div>
+
+<!-- bottom navigation ===================================================================================== -->
+<a name="bottom"></a>
+<br clear="all">
+<table class="bottom">
+	<tr>
+		<td class="bottomLeft">
+			<a href="../scripts.html">
+			<IMG 	alt="previous.png" src="../../../images/previous.png" width="17" height="18">
+			</a>
+		</td>
+		<td class="bottomTitle">
+<!-- HTML navigatie ========================================================================================= -->
+<a name="htmlnav"></a>
+<div align="center">
+<table class="inhoud">
+	<tr>	
+		<td class="ititle">
+			<A href="../../languages.html">Languages</A>
+			&nbsp;&nbsp;
+		</td>
+		<td class="icell">
+			<A href="../scripts.html">Scripts</A>
+			&nbsp;&nbsp;
+		</td>
+		<td class="icell">
+			<A href="find.html">find</A>
+			&nbsp;&nbsp;
+		</td>
+	</tr>
+</table>
+</div>
+		</td>
+		<td class="TimeStamp">Last modified: Sat May 11 15:39:58 2019</td>
+	</tr>
+</table>
+
+</body>
+</html>
