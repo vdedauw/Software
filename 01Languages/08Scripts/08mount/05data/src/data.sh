@@ -13,11 +13,12 @@
 # 0.0.1 creation
 # 0.0.2 added silence
 # 0.0.3 checked, error in echoIt()
+# 0.0.4 checked, error in calling mount.sh
 
 TAG=DATA
 SCRIPT="data.sh"
 DATE="2019/05/06"
-VERSION="0.0.2"
+VERSION="0.0.3"
 MES=" "
 
 NFSHOST=ch3snas
@@ -87,7 +88,7 @@ echoIt
 
 case $COMMAND in
   mount)
-	mount.sh $SILENCE tag="DATA" nfsHost=$NFSHOST nfsExport=$NFSEXPORT nfsMount=$NFSMOUNT nfsPort=$NFSPORT nfsSize=$SIZE
+	mount.sh $SILENCE tag="DATA" nfshost=$NFSHOST nfsexport=$NFSEXPORT nfsmount=$NFSMOUNT nfsport=$NFSPORT nfssize=$SIZE
 	if [ ! $? -eq 0 ]; then exit; fi
 	MES="$NFSHOST:$NFSEXPORT mounted on $NFSMOUNT"
   ;;
