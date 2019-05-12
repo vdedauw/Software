@@ -28,9 +28,10 @@
 # 0.0.6 added showArgument
 # 0.0.7 removed verbosity, because it did not work
 # 0.0.8 now working with associative arrays for syntax and todo
+# 0.0.9 making sure echoIt does has an error
 
 SCRIPT="mount.sh"
-VERSION="0.0.8"
+VERSION="0.0.9"
 DATE="2019/05/06"
 MES=" "
 
@@ -47,6 +48,7 @@ NO_PORT=7
 TAG="MOUNT"
 
 echoIt() {
+   if [ -z $SILENCE ]; then SILENCE="---"; fi
    if [ $SILENCE = 'silence' ]; then return; fi
    if [ $SILENCE = 'SILENCE' ]; then return; fi
    echo "$MES"
