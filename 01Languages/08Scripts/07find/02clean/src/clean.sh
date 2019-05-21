@@ -20,20 +20,50 @@
 # 0.0.6 added showArgument
 # 0.0.7 removed verbosity, because it did not work
 # 0.0.8 now working with associative arrays for syntax and todo
-
+# 0.1.5 new system, see mount.sh
+# 0.1.6 uses WC -w for has parameter instead of -z
 
 SCRIPT="clean.sh"
-VERSION="0.0.8"
+VERSION="0.1.5"
 DATE="2019/05/08"
 
 RETVAL=0
-NO_DIR=1
 
 # define local vars
 TAG="CLEAN"
 OPTIONS=
 
+# return values indicating incorrect command line values are the same as the check numbers
+# as a documentation feature they are repeated as an error name
+TNAME="tag"
+IS_TAG=1                 # dummy value, no check for 'tag'
+
+# this is the directory
+DIRECTORY="directory"
+NO_DIRECTORY=10          # retval for no parameter
+IS_DIRECTORY=10          # checks if this value is an existing directory
+DIR_NOT_EXIST=10         # retval for not exist
+
+# define arrays
+PROGRAMS=("gawk" "grep" "find.sh")
+PARAMS=("$@")
+
+declare -A SYNTAXS
+SYNTAXS=([$TNAME]="tag=" [$DIRECTORY]="directory=")
+declare -A VALUES
+declare -A RETVALS
+RETVALS=([$TNAME]=$NO_TAG [$DIRECTORY]=$NO_DIRECTORY)
+declare -A HASPARAM
+HASPARAM=([$TNAME]="N" [$DIRECTORY]="Y")
+
+# before cycle
+declare -A BEFORE_RETVALS
+BEFORE_RETVALS=([$DIRECTORY]=$DIR_NOT_EXIST)
+declare -A BEFORE_CHECKS
+BEFORE_CHECKS=([$DIRECTORY]=$IS_DIRECTORY)
+
 echoIt() {
+   if [ -z $SILENCE ]; then SILENCE="---"; fi
    if [ $SILENCE = "silence" ]; then return; fi
    if [ $SILENCE = "SILENCE" ]; then return; fi
    echo "$MES"
@@ -53,7 +83,7 @@ loggerExit()
 }
 
 lookiProgram() {
-        MES="check program $PROGRAM"
+        MES="      check program $PROGRAM"
         echoIt
         RETVAL=$NO_PROGRAM
         if [ -z $PROGRAM ]; then
@@ -67,133 +97,143 @@ lookiProgram() {
         fi
 }
 
-lookiArg() {
-        echo $ARGUMENT | grep $TODO > /dev/null
-        if [ $? -eq 0 ]; then
-                VALUE=$(echo $ARGUMENT | gawk -F = '{print $2}')
-        fi
-        case $TODO in
-		"tag=") TAG=$VALUE ;;
-                "dir=") DIR=$VALUE ;;
-        esac
+lookiPrograms() {
+        MES=""
+        echoIt
+        MES="Checking programs"
+        echoIt
+        for PROGRAM in "${PROGRAMS[@]}"
+        do
+                lookiProgram
+        done
+        MES=""
+        echoIt
 }
 
-# for each incoming argument
-# look in the todos array
-# when found remove element in todos
-lookiArgument() {
-        MES="read argument $COUNT $ARGUMENT"
+readCommandLineParameter() {
+        MES="      read command line parameter $COUNT $PARAMETER"
         echoIt
-        for KEY in "${!TODOS[@]}"
+        # read single word parameter
+        for NAME in "${COMMANDS[@]}"
         do
-                TODO=${TODOS[$KEY]}
-                VALUE=
-                lookiArg
-                if [ ! -z $VALUE ]; then
-                        unset TODOS[$KEY]
-                        return # stop looking
+                if [ $NAME = $PARAMETER ]; then
+                        COMMAND=$PARAMETER
+                fi
+        done
+        # read key=value parameter
+        for NAME in "${!SYNTAXS[@]}"
+        do
+                # if the value is not yet set
+                if [ -z ${VALUES[$NAME]} ]; then
+                        SYNTAX=${SYNTAXS[$NAME]}
+                        # if this parameter is the syntax
+                        echo $PARAMETER | grep $SYNTAX > /dev/null
+                        if [ $? -eq 0 ]; then
+                                # then set the value
+                                VALUES[$NAME]=$(echo $PARAMETER | gawk -F = '{print $2}')
+                                return
+                        fi
                 fi
         done
 }
 
-hasArgument() {
-        case $SYNTAX in
-		"tag=") return ;;
-        esac
-        MES="checking argument $SYNTAX"
-        case $SYNTAX in
-                "dir=")    RETVAL=$NO_DIR;    VALUE=$DIR ;;
-        esac
-        MES="$MES $VALUE"
+# read the command line parameters
+readCommandLineParameters() {
+        # read the command line parameters
+        MES="reading command line parameters"
         echoIt
-        if [ -z $VALUE ]; then
-                MES="$SYNTAX undefined"
-                loggerExit
-        fi
-        case $SYNTAX in
-                "dir=")
-                        if [ ! -d $DIR ]; then
-                                MES="directory $DIR does not exist"
+        COUNT=1
+        for PARAMETER in "${PARAMS[@]}"
+        do
+                readCommandLineParameter
+                COUNT=$((COUNT+1))
+        done
+        MES=""
+        echoIt
+}
+
+hasCommandLineParameters() {
+        # check if the command line parameters have values
+        MES="hasCommandLineParameters: each checked command line parameter must have a value"
+        echoIt
+        # enumerate the command line parameter names
+        for NAME in "${!SYNTAXS[@]}"
+        do
+                RETVAL=${RETVALS[$NAME]}
+                PARAM=${HASPARAM[$NAME]}
+                SYNTAX=${SYNTAXS[$NAME]}
+                VALUE=${VALUES[$NAME]}
+                # if the command line set return value is not zero, check it
+                if [ $PARAM = "Y" ]; then
+                        MES="      has parameter $NAME value='$VALUE'"
+                        echoIt
+			WC=$(echo $VALUE | wc -w)
+                        if [ $WC -eq 0 ]; then
+                                MES="command line parameter '$SYNTAX' has no value"
+                                loggerExit
+                        fi
+                fi
+        done
+        MES=""
+        echoIt
+}
+
+checkCommandLineParameter() {
+        if [ -z $CHECK ]; then return; fi
+        # if HASCHECK indicates it, check it
+        case $CHECK in
+                $IS_DIRECTORY)
+                        # check if directory exists, if not --> could not create it
+                        MES="      is directory: ${VALUES[$DIRECTORY]}"
+                        echoIt
+                        WC=$(echo ${VALUES[$DIRECTORY]} | wc -w)
+                        if [ ! $WC -eq 1 ]; then
+                                MES="parameter directory value '${VALUES[$DIRECTORY]}' does not designate a directory"
+                                loggerExit
+                        fi
+                        if [ ! -d ${VALUES[$DIRECTORY]} ]; then
+                                MES="directory ${VALUES[$DIRECTORY]} does not exist"
                                 loggerExit
                         fi
                 ;;
         esac
 }
 
-showArgument() {
-        case $SYNTAX in
-                "tag=")    VALUE=$TAG ;;
-                "dir=")    VALUE=$DIR ;;
-        esac
-        MES="$SYNTAX $VALUE"
+# run before 'mount' program line value checks
+beforeChecks() {
+        MES="beforeChecks"
+        echoIt
+        for NAME in "${!BEFORE_CHECKS[@]}"
+        do
+                RETVAL=${BEFORE_RETVALS[$NAME]}
+                CHECK=${BEFORE_CHECKS[$NAME]}
+                VALUE=${VALUES[$NAME]}
+                checkCommandLineParameter
+        done
+        MES=""
         echoIt
 }
 
 SILENCE=$1
 
-# define arrays
-PROGRAMS=("gawk" "grep" "find.sh")
-ARGUMENTS=("$@")
-#define the syntax arrays
-declare -A SYNTAXS
-declare -A TODOS
-SYNTAXS=([tag]="tag=" [dir]="dir=")
-TODOS=([tag]="tag=" [dir]="dir=")
+lookiPrograms
+readCommandLineParameters
+hasCommandLineParameters
+beforeChecks
 
-MES="checking programs"
-echoIt
-for PROGRAM in "${PROGRAMS[@]}"
-do
-        lookiProgram
-done
-MES=""
-echoIt
+# define default values
+if [ -z ${VALUES[$TNAME]} ]; then VALUES[$TNAME]="CLEAN"; fi
+# if a tag was given use it
+TAG=${VALUES[$TNAME]}
 
-MES="reading arguments"
-echoIt
-COUNT=1
-for ARGUMENT in "${ARGUMENTS[@]}"
-do
-        lookiArgument
-        COUNT=$((COUNT+1))
-done
-MES=""
-echoIt
-
-# if no tag reset to default
-if [ -z $TAG ]; then TAG="CLEAN"; fi
-
-# say hello world
-MES="$SCRIPT version $VERSION from $DATE"
+MES="version $VERSION from $DATE"
 logit
-MES=""
-echoIt
 
-MES="checking arguments"
-echoIt
-for SYNTAX in "${SYNTAXS[@]}"
-do
-        hasArgument
-done
-MES=""
-echoIt
+find.sh $SILENCE execute tag=$TAG directory=${VALUES[$DIRECTORY]} pattern="*bak" action="rm"
+find.sh $SILENCE execute tag=$TAG directory=${VALUES[$DIRECTORY]} pattern="*~" action="rm"
+find.sh $SILENCE execute tag=$TAG directory=${VALUES[$DIRECTORY]} pattern="*conflicting" action="rm"
+find.sh $SILENCE execute tag=$TAG directory=${VALUES[$DIRECTORY]} pattern="*dropbox.attr" action="rm"
 
-MES="settings are"
-echoIt
-for SYNTAX in "${SYNTAXS[@]}"
-do
-        showArgument
-done
-MES=""
-echoIt
-
-echo "tag = $TAG"
-
-find.sh $SILENCE tag=$TAG dir=$DIR name="*bak" action="rm"
-find.sh $SILENCE tag=$TAG dir=$DIR name="*~" action="rm"
-find.sh $SILENCE tag=$TAG dir=$DIR name="*conflicting" action="rm"
-find.sh $SILENCE tag=$TAG dir=$DIR name="*dropbox.attr" action="rm"
-
-MES="$DIR cleaned"
+MES="${VALUES[$DIRECTORY]} cleaned"
 logit
 
