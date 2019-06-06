@@ -58,7 +58,7 @@
 </div>
 		</td>
 		<td class="topRight">
-		<IMG alt="sourceview.png" src="../../../images/sourceview.png" width="26" height="26" />
+		<img src="../../../images/gnu.png" width="58" height="59" alt="gnu.png">
 		</td>
 	</tr>
 </table>
@@ -97,72 +97,58 @@
 		<th class="text">&nbsp;</th>
 	</tr>
 	<tr>
-		<td class="cdone">1</td>
+		<td class="cdone">001</td>
 		<td class="text">Sun May 12 12:02:03 2019</td>
-		<td class="ctext">find.sh</td>
-		<td class="text"><a href="01mount" target="_blank">01mount</a></td>
-		<td class="text">mount a given nfs:export onto a given directory</td>
+		<td class="ctext">rmount.sh</td>
+		<td class="text"><a href="001rmount" target="_blank">001rmount</a></td>
+		<td class="text">rmount.sh. Remote mount. Mount a given nfs:export onto a given directory</td>
 	</tr>
 	<tr>
-		<td class="ctext">$1</td>
-		<td class="text">&nbsp;</td>
-		<td class="text">SILENCE</td>
-		<td class="text" colspan="2">optional 'silence' or 'SILENCE', when set the script will not do 'echo'</td>
+		<td class="cdone">002</td>
+		<td class="text">Thu Jun  6 12:19:02 2019</td>
+		<td class="ctext">lmount.sh</td>
+		<td class="text"><a href="002lmount" target="_blank">002lmount</a></td>
+		<td class="text">lmount.sh. Local mount. Mount a given device onto a given directory</td>
 	</tr>
 	<tr>
-		<td class="ctext">$2</td>
-		<td class="text">&nbsp;</td>
-		<td class="text">TAG</td>
-		<td class="text" colspan="2">TAG, the tag used for the 'logger', /var/log/syslog entry</td>
+		<td class="cdone">102</td>
+		<td class="text">Thu Jun  6 12:19:02 2019</td>
+		<td class="ctext">ch3snas.sh</td>
+		<td class="text"><a href="102ch3snas" target="_blank">102ch3snas</a></td>
+		<td class="text">ch3snas.sh. Mount the remote 'ch3snas' volume onto '/ch3snas'</td>
 	</tr>
 	<tr>
-		<td class="ctext">$3</td>
-		<td class="text">&nbsp;</td>
-		<td class="text">NFSHOST</td>
-		<td class="text" colspan="2">NFSHOST, the NFS server</td>
+		<td class="cdone">103</td>
+		<td class="text">Thu Jun  6 12:19:02 2019</td>
+		<td class="ctext">thetis.sh</td>
+		<td class="text"><a href="103thetis" target="_blank">103thetis</a></td>
+		<td class="text">thetis.sh. Mount the remote 'thetis' volume onto '/thetis'</td>
 	</tr>
 	<tr>
-		<td class="ctext">$4</td>
-		<td class="text">&nbsp;</td>
-		<td class="text">NFSEXPORT</td>
-		<td class="text" colspan="2">NFSEXPORT, the exported directory</td>
+		<td class="cdone">104</td>
+		<td class="text">Thu Jun  6 12:19:02 2019</td>
+		<td class="ctext">saturn.sh</td>
+		<td class="text"><a href="104saturn" target="_blank">104saturn</a></td>
+		<td class="text">saturn.sh. Mount the remote 'saturn' volume onto '/saturn'</td>
 	</tr>
 	<tr>
-		<td class="ctext">$5</td>
-		<td class="text">&nbsp;</td>
-		<td class="text">NFSMOUNT</td>
-		<td class="text" colspan="2">NFSMOUNT, the directory to mount onto</td>
-	</tr>
-	<tr>
-		<td class="ctext">$6</td>
-		<td class="text">&nbsp;</td>
-		<td class="text">NFSPORT</td>
-		<td class="text" colspan="2">NFSPORT, optional, the port used for the NFS service, default 2049</td>
-	</tr>
-	<tr>
-		<td class="ctext">$7</td>
-		<td class="text">&nbsp;</td>
-		<td class="text">NFSSIZE</td>
-		<td class="text" colspan="2">NFSSIZE, optional, the expected size of the exported volume</td>
-	</tr>
-	<tr>
-		<td class="cdone">2</td>
-		<td class="text">Sun May 12 12:02:03 2019</td>
+		<td class="cdone">105</td>
+		<td class="text">Thu Jun  6 12:19:02 2019</td>
 		<td class="ctext">data.sh</td>
-		<td class="text"><a href="05data" target="_blank">05data</a></td>
-		<td class="text">Mounts the ch3snas:/mnt/HD_a2/data volume onto the directory /data</td>
+		<td class="text"><a href="105data" target="_blank">105data</a></td>
+		<td class="text">data.sh. Mount the remote 'data' volume onto '/data'</td>
 	</tr>
 	<tr>
-		<td class="ctext">$1</td>
-		<td class="text">&nbsp;</td>
-		<td class="text">COMMAND</td>
-		<td class="text" colspan="2">mount=mount /data, unmount=unmount /data</td>
-	</tr>
-	<tr>
-		<td class="ctext">$2</td>
-		<td class="text">&nbsp;</td>
-		<td class="text">SILENCE</td>
-		<td class="text" colspan="2">'silence' or 'SILENCE', optional, when set the script does not 'echo'</td>
+		<td class="cdone">111</td>
+		<td class="text">Thu Jun  6 12:19:02 2019</td>
+		<td class="ctext">odroid.sh</td>
+		<td class="text"><a href="111odroid" target="_blank">111odroid</a></td>
+		<td class="text">odroid.sh
+			<ul>
+				<li>when running on host 'odroid', local mount volumes '14iso', '03Personal'</li>
+				<li>when not running' on host 'odroid, mount remote volume 'odroid'</li>
+			</ul>
+		</td>
 	</tr>
 	</table>
 </div>
