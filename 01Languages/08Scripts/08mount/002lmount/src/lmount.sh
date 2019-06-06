@@ -25,9 +25,10 @@
 # 0.1.9 creation
 # 0.2.1 external and internal parameters
 # 0.2.2 using normal arrray (not associative)
+# 0.2.3 some beautifying in device holding
 
 SCRIPT="lmount.sh"
-VERSION="0.2.2"
+VERSION="0.2.3"
 DATE="2019/06/03"
 MES=" "
 
@@ -104,6 +105,10 @@ SERIAL=30
    NAMES[$SERIAL]="SERIAL"
   VALUES[$SERIAL]="false"
  SYNTAXS[$SERIAL]="serial="
+# serial device holder
+SERIAL_DEVICE=31
+   NAMES[$SERIAL_DEVICE]="SERIAL_DEVICE"
+  VALUES[$SERIAL_DEVICE]="false"
 # check if there is a device with serial
 SERIAL_PRESENT=32
  NAMES[$SERIAL_PRESENT]="SERIAL_PRESENT"
@@ -119,6 +124,10 @@ UUID=40
    NAMES[$UUID]="UUID"
   VALUES[$UUID]="false"
  SYNTAXS[$UUID]="uuid="
+# uuid device holder
+UUID_DEVICE=41
+   NAMES[$UUID_DEVICE]="UUID_DEVICE"
+  VALUES[$UUID_DEVICE]="false"
 # check if volume with UUID present
 UUID_PRESENT=42
  NAMES[$UUID_PRESENT]="UUID_PRESENT"
@@ -134,6 +143,10 @@ LABEL=50
    NAMES[$LABEL]="LABEL"
   VALUES[$LABEL]="false"
  SYNTAXS[$LABEL]="label="
+# label device holder
+LABEL_DEVICE=51
+   NAMES[$LABEL_DEVICE]="LABEL_DEVICE"
+  VALUES[$LABEL_DEVICE]="false"
 # check if label is present in volume with UUID
 LABEL_PRESENT=52
  NAMES[$LABEL_PRESENT]="LABEL_PRESENT"
@@ -346,11 +359,12 @@ checkParameters() {
 					if [ $? -eq 0 ];then
 						MES="            --> $DEV has serial ${VALUES[$SERIAL]}"
 						echoIt
-						VALUES[$SERIAL_PRESENT]=$DEV
+						VALUES[$SERIAL_PRESENT]="true"
+						VALUES[$SERIAL_DEVICE]=$DEV
 					fi
 				done
                 	        if [ ${VALUES[$SERIAL_PRESENT]} = "false" ]; then
-                        	        MES="device with serial VALUES[$SERIAL] not found"
+                        	        MES="device with serial ${VALUES[$SERIAL]} not found"
 	                                loggerExit
         	                fi
 			fi
@@ -361,15 +375,16 @@ checkParameters() {
 	                        MES="      check label ${VALUES[$LABEL]} is present"
         	                echoIt
         	                # checks if DEVICE has label
-                	        e2label ${VALUES[$UUID_PRESENT]} | grep ${VALUES[$LABEL]} > /dev/null
+                	        e2label ${VALUES[$UUID_DEVICE]} | grep ${VALUES[$LABEL]} > /dev/null
                         	if [ ! $? -eq 0 ];then
-					MES="label ${VALUES[$LABEL]} not present on device ${VALUES[$UUID_PRESENT]}"
+					MES="label ${VALUES[$LABEL]} not present on device ${VALUES[$UUID_DEVICE]}"
 					loggerExit
         	                fi
-				VALUES[$LABEL_PRESENT]=${VALUES[$UUID_PRESENT]}
+				VALUES[$LABEL_DEVICE]=${VALUES[$UUID_DEVICE]}
+				VALUES[$LABEL_PRESENT]="true"
 				MES="         device ${VALUES[$UUID_PRESENT]} has label ${VALUES[$LABEL]}"
 				echoIt
-				VALUES[$DEVICE]=${VALUES[$LABEL_PRESENT]}
+				VALUES[$DEVICE]=${VALUES[$LABEL_DEVICE]}
 			fi
                 ;;
 
@@ -382,7 +397,8 @@ checkParameters() {
                       		if [ ! -z $DEV ];then
 	                              	MES="         --> device $DEV with UUID ${VALUES[$UUID]} found"
                                         echoIt
-					VALUES[$UUID_PRESENT]=$DEV
+					VALUES[$UUID_PRESENT]="true"
+					VALUES[$UUID_DEVICE]=$DEV
                 	        fi
 				if  [ ${VALUES[$UUID_PRESENT]} = "false" ]; then
                 	                MES="device with UUID ${VALUES[$UUID]} not found"
