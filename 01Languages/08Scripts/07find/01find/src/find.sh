@@ -30,89 +30,98 @@
 # 0.1.5 new system, associative arrays, commands array, ...
 # 0.1.6 added count, execute
 # 0.1.7 in check?, use associative arrays for ?_title, ?_message, ?_error
+# 0.1.8 isexecutable implemented
+# 0.2.3 complte rewrite
+# 0.2.4 removed some serious bugs
 
 SCRIPT="find.sh"
 TAG="FIND"
-VERSION="0.1.7"
-DATE="2019/05/19"
+VERSION="0.2.4"
+DATE="2019/06/07"
 
+# return value, default value 0
 RETVAL=0
+NO_ISEXECUATBLE=-1
+NO_PROGRAM=-2
 
-declare -A SYNTAXS
-declare -A VALUES
-declare -A RETVALS
-declare -A HASPARAM
-declare -A CHECK1
-declare -A ERROR1
-declare -A CHECK2
-declare -A ERROR2
-declare -A CHECK3
-declare -A ERROR3
-declare -A CHECK4
-declare -A ERROR4
-declare -A CHECK5
-declare -A ERROR5
-
-# define local vars
-OPTIONS=
+DO_EXIT="true"
 
 # define arrays
-PROGRAMS=("gawk" "grep" "find" "wc")
-PARAMS=("$@")
 OPTIONS=
-COMMANDS=("silence" "find" "count" "execute" "show" "usage")
+COMMANDS=("find" "count" "execute" "checks" "show" "usage")
 
-# return values indicating incorrect command line values are the same as the check numbers
-# as a documentation feature they are repeated as an error name
-TNAME="tag"
-IS_TAG=1                 # dummy value, no check for 'tag'
-NO_TAG=1
- SYNTAXS+=([$TNAME]="tag=")
- RETVALS+=([$TNAME]=$NO_TAG)
-HASPARAM+=([$TNAME]="N")
+declare -a NAMES
+declare -a SYNTAXS
+declare -a VALUES
+declare -a CHECK1
+declare -a CHECK2
+declare -a CHECK3
+declare -a CHECK4
+
+# the check series identifiers
+CHECK1[0]=1
+NAMES[1]="Identifier"
+CHECK2[0]=2
+NAMES[2]="Identifier"
+CHECK3[0]=3
+NAMES[3]="Identifier"
+CHECK4[0]=4
+NAMES[4]="Identifier"
+
+# tag for this run
+# ID 1,2,3,4 are not used as check, but as 'check serie' identifier
+TAG_ID=5
+   NAMES[$TAG_ID]="TAG"
+  VALUES[$TAG_ID]="false"
+ SYNTAXS[$TAG_ID]="tag="
 
 # the command for this script
-CNAME="command"
-NO_COMMAND=10
+# origin command line first of second parameter, 'command=' not used !!
+COMMAND_ID=10
+   NAMES[$COMMAND_ID]="COMMAND"
+  VALUES[$COMMAND_ID]="true"
+ SYNTAXS[$COMMAND_ID]="command="
 
 # pattern for the find -name option
-PATTERN="pattern"
-NO_PATTERN=10
- SYNTAXS+=([$PATTERN]="pattern=")
- RETVALS+=([$PATTERN]=$NO_PATTERN)
-HASPARAM+=([$PATTERN]="Y")
-# checks if pattern is ?? (will not be checked in bash)
-IS_PATTERN_TITLE="is string ?"
-IS_PATTERN_MESSAGE="is not a string !"
-IS_PATTERN_ERROR=11
-CHECK1+=([$IS_PATTERN_TITLE]=$IS_PATTERN_MESSAGE)
-ERROR1+=([$IS_PATTERN_TITLE]=$IS_PATTERN_ERROR)
+# origin: command line parameters
+PATTERN=20
+   NAMES[$PATTERN]="PATTERN"
+  VALUES[$PATTERN]="false"
+ SYNTAXS[$PATTERN]="pattern="
+# checks if pattern is a string ?? (will not be checked in bash)
+PATTERN_STRING=21
+VALUES[$PATTERN_STRING]="false"
+CHECK1[$PATTERN_STRING]=$PATTERN_STRING
 
 # directory path to recursively search in
-DIRECTORY="directory"
-NO_DIRECTORY=20
- SYNTAXS+=([$DIRECTORY]="directory=")
- RETVALS+=([$DIRECTORY]=$NO_PATTERN)
-HASPARAM+=([$DIRECTORY]="Y")
+# origin: command line parameters
+DIRECTORY=30
+   NAMES[$DIRECTORY]="DIRECTORY"
+  VALUES[$DIRECTORY]="false"
+ SYNTAXS[$DIRECTORY]="directory="
+#
+# check mount designates a directory
+IS_DIRECTORY=31
+ NAMES[$IS_DIRECTORY]="IS_DIRECTORY"
+VALUES[$IS_DIRECTORY]="false"
+CHECK1[$IS_DIRECTORY]=$IS_DIRECTORY
 # check if directory exist
-IS_DIRECTORY_TITLE="is directory ?"
-IS_DIRECTORY_MESSAGE="directory does not exist!"
-IS_DIRECTORY_ERROR=21
-CHECK1+=([$IS_DIRECTORY_TITLE]=$IS_DIRECTORY_MESSAGE)
-ERROR1+=([$IS_DIRECTORY_TITLE]=$IS_DIRECTORY_ERROR)
+DIRECTORY_EXIST=32
+ NAMES[$DIRECTORY_EXIST]="DIRECTORY_EXIST"
+VALUES[$DIRECTORY_EXIST]="false"
+CHECK1[$DIRECTORY_EXIST]=$DIRECTORY_EXIST
 
 # the action to perform on each found file
-ACTION="action"
-NO_ACTION=30
- SYNTAXS+=([$ACTION]="action=")
- RETVALS+=([$ACTION]=$NO_ACTION)
-HASPARAM+=([$ACTION]="N")
+# origin: command line parameters
+ACTION=40
+   NAMES[$ACTION]="ACTION"
+  VALUES[$ACTION]="false"
+ SYNTAXS[$ACTION]="action="
 # checks if action exists either as a script or a program
-HAS_ACTION_TITLE="is a command ?"
-HAS_ACTION_MESSAGE="is not a command !"
-HAS_ACTION_ERROR=31
-CHECK2+=([$HAS_ACTION_TITLE]=$HAS_ACTION_MESSAGE)
-ERROR2+=([$HAS_ACTION_TITLE]=$HAS_ACTION_ERROR)
+ACTION_EXCUTABLE=41
+ NAMES[$ACTION_EXCUTABLE]="ACTION_EXCUTABLE"
+VALUES[$ACTION_EXCUTABLE]="false"
+CHECK2[$ACTION_EXCUTABLE]=$ACTION_EXCUTABLE
 
 echoIt() {
    if [ -z $SILENCE ]; then SILENCE="---"; fi
@@ -131,39 +140,19 @@ logit() {
 loggerExit()
 {
    logit
-   exit $RETVAL
+   if [ $DO_EXIT = "true" ]; then
+           exit $RETVAL
+   fi
 }
 
-lookiProgram() {
-        MES="      check program $PROGRAM"
-	echoIt
-        RETVAL=$NO_PROGRAM
-        if [ -z $PROGRAM ]; then
-                MES="Program undefined"
-                loggerExit
-        fi
-        whereis $PROGRAM | grep /$program > /dev/null
-        if [ ! $? -eq 0 ]; then
-                MES="Program $PROGRAM not installed"
-                loggerExit
-        fi
-}
-
-lookiPrograms() {
-        MES=""
-        echoIt
-        MES="Checking programs"
-        echoIt
-        for PROGRAM in "${PROGRAMS[@]}"
-        do
-                lookiProgram
-        done
-        MES=""
-        echoIt
+getNameValueFromId() {
+        RETVAL=$ID
+        NAME=${NAMES[$ID]}
+        VALUE=${VALUES[$ID]}
 }
 
 readCommandLineParameter() {
-        MES="      read command line parameter $COUNT $PARAMETER"
+        MES="      parameter $COUNT $PARAMETER"
         echoIt
         # read single word parameter
         for NAME in "${COMMANDS[@]}"
@@ -173,16 +162,17 @@ readCommandLineParameter() {
                 fi
         done
         # read key=value parameter
-        for NAME in "${!SYNTAXS[@]}"
+        for ID in "${!SYNTAXS[@]}"
         do
+                getNameValueFromId
                 # if the value is not yet set
-                if [ -z ${VALUES[$NAME]} ]; then
-                        SYNTAX=${SYNTAXS[$NAME]}
+                if [ $VALUE = "false" ]; then
+                        SYNTAX=${SYNTAXS[$ID]}
                         # if this parameter is the syntax
                         echo $PARAMETER | grep $SYNTAX > /dev/null
                         if [ $? -eq 0 ]; then
                                 # then set the value
-                                VALUES[$NAME]=$(echo $PARAMETER | gawk -F = '{print $2}')
+                                VALUES[$ID]=$(echo $PARAMETER | gawk -F '=' '{print $2}')
                                 return
                         fi
                 fi
@@ -209,106 +199,88 @@ hasCommandLineParameters() {
         MES="hasCommandLineParameters: each checked command line parameter must have a value"
         echoIt
         # enumerate the command line parameter names
-        for NAME in "${!SYNTAXS[@]}"
+        for ID in "${!SYNTAXS[@]}"
         do
-                RETVAL=${RETVALS[$NAME]}
-                PARAM=${HASPARAM[$NAME]}
-                SYNTAX=${SYNTAXS[$NAME]}
-                VALUE=${VALUES[$NAME]}
+                getNameValueFromId
                 # if the command line set return value is not zero, check it
-                if [ $PARAM = "Y" ]; then
-                        MES="      has parameter $NAME value='$VALUE'"
-                        echoIt
-                        if [ -z $VALUE ]; then
-                                MES="command line parameter '$SYNTAX' has no value"
-                                loggerExit
-                        fi
+                if [ $VALUE = "not readed" ]; then
+                        MES="command line parameter '$NAME' has no value"
+                        loggerExit
                 fi
         done
         MES=""
         echoIt
 }
 
-checkCommandLineParameter() {
-	WC=$(echo $TITLE | wc -w)
-        if [ $WC -eq 0 ]; then return; fi
-        # if HASTITLE indicates it, check it
-        case $TITLE in
-                $IS_DIRECTORY_TITLE)
-                        # check if directory exists, if not --> could not create it
-                        MES="      ${VALUES[$DIRECTORY]} $TITLE"
-                        echoIt
-                        WC=$(echo ${VALUES[$DIRECTORY]} | wc -w)
-                        if [ ! $WC -eq 1 ]; then
-                                MES="parameter directory value '${VALUES[$DIRECTORY]}' does not designate a directory"
-                                loggerExit
+checkParameters() {
+        case $ID in
+
+		$IS_DIRECTORY)
+                        if [ $VALUE = "false" ]; then
+                                # check if this value designates a directory
+                                MES="      check if ${VALUES[$DIRECTORY]} designates a directory"
+                                echoIt
+                                        WC=$(echo ${VALUES[$DIRECTORY]} | wc -w)
+                                if [ ! $WC -eq 1 ]; then
+                                        MES="${VALUES[$DIRECTORY]} does not designate a directory"
+                                        loggerExit
+                                fi
+                                VALUES[$IS_DIRECTORY]="true"
                         fi
-                        if [ ! -d ${VALUES[$DIRECTORY]} ]; then
-                                MES="${VALUES[$DIRECTORY]} $MESSAGE"
-                                loggerExit
+               ;;
+
+               $DIRECTORY_EXIST)
+                        if [ $VALUE = "false" ]; then
+                                # check if directory exists,
+                                MES="      check directory ${VALUES[$DIRECTORY]} exist"
+                                echoIt
+                                if [ ! -d ${VALUES[$DIRECTORY]} ]; then
+                                        MES="${VALUES[$DIRECTORY]} does not exist"
+                                        loggerExit
+                                fi
+                                VALUES[$DIRECTORY_EXIST]="true"
+                                MES="         ${VALUES[$DIRECTORY]} directory exist"
+                                echoIt
                         fi
                 ;;
-		$HAS_ACTION_TITLE)
+
+		$ACTION_EXECUTABLE)
 			# check if action is a valid command, ... installed program or script
-			MES="      ${VALUES[$ACTION]} $TITLE"
-			echoIt
-        	        WC=$(echo ${VALUES[$ACTION]} | wc -w)
-               	        if [ ! $WC -eq 1 ]; then
-                       	        MES="parameter action value '${VALUES[$ACTION]}' does not designate a command"
-                                loggerExit
-       	                fi
-			whereis ${VALUES[$ACTION]} > /dev/null 2>/dev/null
-			if [ ! $? -eq 0 ]; then
-				MES="${VALUES[$ACTION]} $MESSAGE"
-				loggerExit
+			if [ $VALUE = "false" ]; then
+				MES="      ${VALUES[$ACTION]} exist and is executable ?"
+				echoIt
+
+				isexecutable.sh SILENCE $TAG ${VALUES[ACTION]}
+				if [ $? -eq 0 ]; then
+					MES="      ${VALUES[$ACTION]} exist and is executable"
+					echoIt
+					VALUES[$ACTION_EXECUTABLE="true"]
+				fi
+
+				if [ ${VALUES[$ACTION_EXECUTABLE]} = "false" ];then
+					MES="      action ${VALUES[$ACTION_EXECUTABLE]} is not executable"
+					loggerExit
+				fi
 			fi
 		;;
 	esac
 }
 
-# run before 'find' program line value checks
-check1() {
-        MES="check1"
-        echoIt
-        for TITLE in "${!CHECK1[@]}"
-        do
-                MESSAGE=${CHECK1[$TITLE]}
-		RETVAL=${ERROR1[$TITLE]}
-                checkCommandLineParameter
-        done
-        MES=""
-        echoIt
-}
-
-# run before 'find' program line value checks
-check2() {
-        MES="check2"
-        echoIt
-        for TITLE in "${!CHECK2[@]}"
-        do
-                MESSAGE=${CHECK2[$TITLE]}
-                RETVAL=${ERROR2[$TITLE]}
-                checkCommandLineParameter
-        done
-        MES=""
-        echoIt
-}
-
-
-# show all values
-showValues() {
-        MES="showValues"
-        echoIt
-        if [ $SILENCE = 'silence' ] || [ $SILENCE = 'SILENCE' ]; then
-                echo "      silenced"
+# check the parameters before the script action
+checks() {
+        if [ ! ${#CHECKS[@]} -eq 0 ]; then
+                MES="--> check ${CHECKS[0]}"
+                echoIt
+                for ID in "${CHECKS[@]}"
+                do
+                        getNameValueFromId
+                        MES="   check ($ID) ($NAME)"
+                        echoIt
+                        checkParameters
+                done
+                MES=""
+                echoIt
         fi
-        if [ ! -z $COMMAND ]; then echo "      command $COMMAND"; fi
-        for NAME in "${!SYNTAXS[@]}"
-        do
-                echo "      $NAME ${VALUES[$NAME]}"
-        done
-        MES=""
-        echoIt
 }
 
 usage() {
@@ -334,13 +306,76 @@ usage() {
 #	echo ""
 }
 
+# show all values
+showValues() {
+        echo "showValues"
+        if [ $SILENCE = 'silence' ] || [ $SILENCE = 'SILENCE' ]; then
+                echo "      silenced"
+        fi
+        echo "" | gawk '{printf("\t\t%3s %20s %50s %10s\n","ID","NAME","VALUE","SYNTAX");}'
+        for ID in "${!NAMES[@]}"
+        do
+                getNameValueFromId
+                SYNTAX=${SYNTAXS[$ID]}
+                if [ ! -z $SYNTAX ]; then
+                        TMP="$ID:$NAME:$VALUE:$SYNTAX"
+                        echo "$TMP" | gawk -F ':' '{printf("\t\t%3d %20s %50s %10s\n",$1,$2,$3,$4);}'
+
+                else
+                        TMP="$ID:$NAME:$VALUE"
+                        echo "$TMP" | gawk -F ':' '{printf("\t\t%3d %20s %50s\n",$1,$2,$3);}'
+
+                fi
+        done
+        MES=""
+        echoIt
+}
+
+showChecks() {
+        if [ ! ${#CHECKS[@]} -eq 0 ]; then
+                echo "--> checks ${CHECKS[0]}"
+                for ID in "${CHECKS[@]}"
+                do
+                        echo "$ID ${NAMES[$ID]}" | gawk '{printf("\t%d %s\n",$1,$2);}'
+                done
+        fi
+}
+
+disableExitChecks() {
+        DO_EXIT="false"
+        CHECKS=(${CHECK1[@]})
+        checks
+        CHECKS=(${CHECK2[@]})
+        checks
+        CHECKS=(${CHECK3[@]})
+        checks
+        CHECKS=(${CHECK4[@]})
+        checks
+}
+
 # no echo when SILENCE='silence' or 'SILENCE'
 SILENCE=$1
+if [ -z $SILENCE ]; then SILENCE="---"; fi
+if [ $SILENCE = "silence" ]; then shift; fi
+if [ $SILENCE = "SILENCE" ]; then shift; fi
+PARAMS=("$@")
 
+TAG="FIND"
 MES="version $VERSION from $DATE"
 logit
 
-lookiPrograms
+if [ ! -x /usr/bin/isexecutable.sh ]; then
+        RETVAL=$NO_ISEXECUTABLE
+        MES="isexecutable not installed"
+        loggerExit
+fi
+
+isexecutable.sh silence $TAG "find" "wc"
+if [ ! $? -eq 0 ]; then
+        RETVAL=$NO_PROGRAM
+        MES="one or more programs not installed"
+        loggerExit
+fi
 readCommandLineParameters
 
 # set defaults
@@ -351,23 +386,33 @@ TAG=${VALUES[$TNAME]}
 case $COMMAND in
 	find)
 		hasCommandLineParameters
-		check1
+	        CHECKS=(${CHECK1[@]})
+        	checks
 		find ${VALUES[$DIRECTORY]} -name "${VALUES[$PATTERN]}" -type f 2> /dev/null
 	;;
 	count)
 		hasCommandLineParameters
-		check1
+                CHECKS=(${CHECK1[@]})
+                checks
 		find ${VALUES[$DIRECTORY]} -name "${VALUES[$PATTERN]}" -type f 2> /dev/null | wc -l
 	;;
 	execute)
 		HASPARAM[$ACTION]="Y"
 		hasCommandLineParameters
-		check1
-		check2
+                CHECKS=(${CHECK1[@]})
+                checks
+		# check action
+                CHECKS=(${CHECK2[@]})
+                checks
 		find ${VALUES[$DIRECTORY]} -name "${VALUES[$PATTERN]}" -type f -exec ${VALUES[$ACTION]} {} \; 2> /dev/null
 	;;
 	show)
+		disableExitChecks
 		showValues
+	;;
+	checks)
+		disableExitChecks
+		showChecks
 	;;
 	usage)
 		usage
