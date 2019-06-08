@@ -39,6 +39,7 @@
 # 0.1.8 implementing isexecutable.sh
 # 0.1.9 corrected, after noexecutable.sh, no RETVAL check (added NO_PROGAM return value)
 # 0.2.2 no assiciative arrays, predefined order in checks, added command 'checks'
+# 0.2.4 implemented disableExitChecks
 
 SCRIPT="rmount.sh"
 VERSION="0.2.2"
@@ -551,6 +552,18 @@ showChecks() {
         fi
 }
 
+disableExitChecks() {
+        DO_EXIT="false"
+        CHECKS=(${CHECK1[@]})
+        checks
+        CHECKS=(${CHECK2[@]})
+        checks
+        CHECKS=(${CHECK3[@]})
+        checks
+        CHECKS=(${CHECK4[@]})
+        checks
+}
+
 # be silent, will only use logger (and problably some difficult to avoid empty lines)
 SILENCE=$1
 if [ -z $SILENCE ]; then SILENCE="---"; fi
@@ -612,26 +625,11 @@ case $COMMAND in
         echoIt
     ;;
     show)
-        DO_EXIT="false"
-        CHECKS=(${CHECK1[@]})
-        checks
-        CHECKS=(${CHECK2[@]})
-        checks
-        CHECKS=(${CHECK3[@]})
-        checks
-        CHECKS=(${CHECK4[@]})
-        checks
+	disableExitChecks
         showValues
     ;;
     checks)
-        DO_EXIT="false"
-        CHECKS=(${CHECK1[@]})
-        showChecks
-        CHECKS=(${CHECK2[@]})
-        showChecks
-        CHECKS=(${CHECK3[@]})
-        showChecks
-        CHECKS=(${CHECK4[@]})
+	disableExitChecks
         showChecks
     ;;
     free)
