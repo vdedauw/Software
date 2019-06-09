@@ -18,6 +18,7 @@
 # REMOTEDIR   remotedir=thedir
 # FTPUSER     user=theuser           www-data
 # FTPPASSWORD password=thepassword   www-datapw
+# NOPORT      noport=true            do not nmap remote host if 'true'	    false
 #
 # when FTPPASSWORD is empty and FTPUSER=anonymous, connection is made without paswword
 #
@@ -31,145 +32,184 @@
 # 0.0.6 added showArgument
 # 0.1.5 new system, associative arrays, commands array, ...
 # 0.1.7 in check?, use associative arrays for ?_title, ?_message, ?_error
+# 0.1.8 isexecutable.sh implemented
+# 0.2.3 reviewed
 
 SCRIPT="lftp.sh"
-VERSION="0.1.7"
-DATE="2019/05/22"
+VERSION="0.2.3"
+DATE="2019/06/08"
+MES=" "
 
 RETVAL=0
-
-declare -A SYNTAXS
-declare -A VALUES
-declare -A RETVALS
-declare -A HASPARAM
-declare -A CHECK1
-declare -A ERROR1
-declare -A CHECK2
-declare -A ERROR2
-declare -A CHECK3
-declare -A ERROR3
-declare -A CHECK4
-declare -A ERROR4
-declare -A CHECK5
-declare -A ERROR5
+NO_ISEXECUTABLE=-1
+NO_PROGRAM=-2
+DO_EXIT="true"
 
 # define arrays
-PROGRAMS=("gawk" "grep" "lftp" "nmap" "ping" "clean.sh")
-PARAMS=("$@")
 OPTIONS=
-COMMANDS=("silence" "publish" "backup" "show" "usage")
+COMMANDS=("publish" "backup" "show" "checks" "usage")
 
-# return values indicating incorrect command line values are the same as the check numbers
-# as a documentation feature they are repeated as an error name
-TAG="LFTP"		# default value
-TNAME="tag"
-IS_TAG=1                # dummy value, no check for 'tag'
-NO_TAG=1
- SYNTAXS+=([$TNAME]="tag=")
- RETVALS+=([$TNAME]=$NO_TAG)
-HASPARAM+=([$TNAME]="N")
+declare -a NAMES
+declare -a SYNTAXS
+declare -a VALUES
+declare -a CHECK1
+declare -a CHECK2
+declare -a CHECK3
+declare -a CHECK4
 
-DOMAIN="domain"	 	# the name for 'domain'
-NO_DOMAIN=10
-LOCAL_DOMAIN_TITLE="is local domain ?"			# checks if domain is a local dns domain
-LOCAL_DOMAIN_MESAGE="domain is not a local domain !"	# domiain is not a local dns domain
-LOCAL_DOMAIN_ERROR=11
- SYNTAXS+=([$DOMAIN]="domain=")
- RETVALS+=([$DOMAIN]=$NO_DOMAIN)
-HASPARAM+=([$DOMAIN]="N")
+# the check series identifiers
+CHECK1[0]=1
+NAMES[1]="Identifier"
+CHECK2[0]=2
+NAMES[2]="Identifier"
+CHECK3[0]=3
+NAMES[3]="Identifier"
+CHECK4[0]=4
+NAMES[4]="Identifier"
 
-HOST="host"		 # the name for 'host'
-NO_HOST=20
-HOST_ONLINE_TITLE="host online ?"	# checks if the host is online
-HOST_ONLINE_MESSAGE="host not online !"
-HOST_ONLINE_ERROR=21
-HOST_DNS_TITLE="host in local dns ?"	# checks if the host is in de local dns database, only when domain is known
-HOST_DNS_MESSAGE="host not in local dns !"
-HOST_DNS_ERROR=22
- SYNTAXS+=([$HOST]="host=")
- RETVALS+=([$HOST]=$NO_HOST)
-HASPARAM+=([$HOST]="Y")
-CHECK1+=([$HOST_ONLINE_TITLE]=$HOST_ONLINE_MESSAGE)
-ERROR1+=([$HOST_ONLINE_TITLE]=$HOST_ONLINE_ERROR)
+# tag for this run
+# ID 1,2,3,4 are not used as check, but as 'check serie' identifier, see above
+TAG_ID=5
+   NAMES[$TAG_ID]="LFTP"
+  VALUES[$TAG_ID]="false"
+ SYNTAXS[$TAG_ID]="tag="
 
-PORT="port"		# the name for the port parameter
-NO_PORT=30
-HAS_PORT_TITLE="remote port open ?"		# checks of port open on host
-HAS_PORT_MESSAGE="remote port not open !"
-HAS_PORT_ERROR=31
-LOCAL_PORT_TITLE="local port open ?"		# local host has open port
-LOCAL_PORT_MESSAGE="no local port on host !"
-LOCAL_PORT_ERROR=32
- SYNTAXS+=([$PORT]="port=")
- RETVALS+=([$PORT]=$NO_PORT)
-HASPARAM+=([$PORT]="Y")
-CHECK1+=([$HAS_PORT_TITLE]=$HAS_PORT_MESSAGE)
-ERROR1+=([$HAS_PORT_TITLE]=$HAS_PORT_ERROR)
-# no use for local port at this time
+# the command for this script
+# origin command line first of second parameter, 'command=' not used !!
+COMMAND_ID=10
+   NAMES[$COMMAND_ID]="COMMAND"
+  VALUES[$COMMAND_ID]="false"
+ SYNTAXS[$COMMAND_ID]="command="
+
+# the domain to communicate within
+# origin ??? not used at this time
+DOMAIN=20
+   NAMES[$DOMAIN]="DOMAIN"
+  VALUES[$DOMAIN]="hasnot"
+ SYNTAXS[$DOMAIN]="domain="
+# checks if domain is a local dns domain
+LOCAL_DOMAIN=21
+VALUES[$LOCAL_DOMAIN]="false"
+#CHECK1[$LOCAL_DOMAIN]=$LOCAL_DOMAIN
+
+# the host to communicate within
+# origin: command line parameter
+HOST=30
+   NAMES[$HOST]="HOST"
+  VALUES[$HOST]="false"
+ SYNTAXS[$HOST]="host="
+# checks if the host is online
+HOST_ONLINE=31
+ NAMES[$HOST_ONLINE]="HOST_ONLINE"
+VALUES[$HOST_ONLINE]="false"
+CHECK1[$HOST_ONLINE]=$HOST_ONLINE
+# checks if the host is in de local dns database, only when domain is known
+HOST_LOCAL_DOMAIN=32
+ NAMES[$HOST_LOCAL_DOMAIN]="HOST_LOCAL_DOMAIN"
+VALUES[$HOST_LOCAL_DOMAIN]="false"
+#CHECK1[$HOST_LOCAL_DOMAIN]=$HOST_LOCAL_DOMAIN
+
+# the name for the port parameter
+# origin: command line parameter
+PORT=40
+   NAMES[$PORT]="PORT"
+  VALUES[$PORT]=21
+ SYNTAXS[$PORT]="port="
+# indicates that the port cannot be checked, because remote host does not accecpt nmap
+NO_PORT=41
+   NAMES[$NO_PORT]="NOPORT"
+  VALUES[$NO_PORT]="false"
+ SYNTAXS[$NO_PORT]="noport="
+# checks if the host is online
+REMOTE_PORT=42
+ NAMES[$REMOTE_PORT]="REMOTE_PORT"
+VALUES[$REMOTE_PORT]="false"
+CHECK1[$REMOTE_PORT]=$REMOTE_PORT
+# checks if the host is in de local dns database, only when domain is known
+LOCAL_PORT=43
+ NAMES[$LOCAL_PORT]="LOCAL_PORT"
+VALUES[$LOCAL_PORT]="false"
+#CHECK1[$LOCAL_PORT]=$LOCAL_PORT
+
 
 # this is local dir
-LOCALDIR="localdir"		# the name for 'localdir'
-NO_LOCALDIR=40       		# retval when this value is not set
-IS_LOCALDIR_TITLE="value designates a directory ?"
-IS_LOCALDIR_MESSAGE="value does not designate a directory !"
-IS_LOCALDIR_ERROR=41
-EXIST_LOCALDIR_TITLE="directory exist ?"
-EXIST_LOCALDIR_MESSAGE="directory does not exist !"
-EXIST_LOCALDIR_ERROR=42				# localdir does not exits
-NEW_LOCALDIR_TITLE="creating new directory."       # creates this directory
-NEW_LOCALDIR_MESSAGE="could not create directory !"
-NEW_LOCALDIR_ERROR=43
- SYNTAXS+=([$LOCALDIR]="localdir=")
- RETVALS+=([$LOCALDIR]=$NO_LOCALDIR)
-HASPARAM+=([$LOCALDIR]="Y")
-# the order of check is important !!
-CHECK1+=([$IS_LOCALDIR_TITLE]=$IS_LOCALDIR_MESSAGE)
-ERROR1+=([$IS_LOCALDIR_TITLE]=$IS_LOCALDIR_ERROR)
-CHECK2+=([$EXIST_LOCALDIR_TITLE]=$EXIST_LOCALDIR_MESSAGE)
-ERROR2+=([$EXIST_LOCALDIR_TITLE]=$EXIST_LOCALDIR_ERROR)
-CHECK3+=([$NEW_LOCALDIR_TITLE]=$NEW_LOCALDIR_MESSAGE)
-ERROR3+=([$NEW_LOCALDIR_TITLE]=$NEW_LOCALDIR_ERROR)
+# origin: command line paramater
+LOCAL_DIR=50
+   NAMES[$LOCAL_DIR]="LOCAL_DIR"
+  VALUES[$LOCAL_DIR]="false"
+ SYNTAXS[$LOCAL_DIR]="localdir="
+# check local_dir designates directory
+IS_DIRECTORY=51
+ NAMES[$IS_DIRECTORY]="IS_DIRECTORY"
+VALUES[$IS_DIRECTORY]="false"
+CHECK1[$IS_DIRECTORY]=$IS_DIRECTORY
+# create local-dir directory, needed for the backup function
+DIRECTORY_CREATE=52
+ NAMES[$DIRECTORY_CREATE]="DIRECTORY_CREATE"
+VALUES[$DIRECTORY_CREATE]="false"
+CHECK1[$DIRECTORY_CREATE]=$DIRECTORY_CREATE
+# check if directory exist
+DIRECTORY_EXIST=53
+ NAMES[$DIRECTORY_EXIST]="DIRECTORY_EXIST"
+VALUES[$DIRECTORY_EXIST]="false"
+CHECK1[$DIRECTORY_EXIST]=$DIRECTORY_EXIST
 
 # this is remote dir
-REMOTEDIR="remotedir"            # the name for 'remotedir'
-NO_REMOTEDIR=50
-EXIST_REMOTEDIR_TITLE="remote directory exist ?"     # checks if remotedir exist
-EXIST_REMOTEDIR_MESSAGE="remote directory does not exist !"
-EXISR_REMOTEDIR_ERROR=51
-NEW_REMOTEDIR_TITLE="creating remote directory."     # creates this directory
-NEW_REMOTEDIR_MESSGAE="could not create remote directory !"
-NEW_REMOTEDIR_ERROR=52
- SYNTAXS+=([$REMOTEDIR]="remotedir=")
- RETVALS+=([$REMOTEDIR]=$NO_REMOTEDIR)
-HASPARAM+=([$REMOTEDIR]="Y")
-# no checks for remote dir this time
+# origin: command line paramater
+REMOTE_DIR=60
+   NAMES[$REMOTE_DIR]="REMOTE_DIR"
+  VALUES[$REMOTE_DIR]="false"
+ SYNTAXS[$REMOTE_DIR]="remotedir="
+# check is user designates a possible user
+IS_REMOTE_DIR=61
+ NAMES[$IS_REMOTE_DIR]="IS_REMOTE_DIR"
+VALUES[$IS_REMOTE_DIR]="false"
+CHECK1[$IS_REMOTE_DIR]=$IS_REMOTE_DIR
 
-# user
-USER="user"		# the name for this parameter
-NO_USER=60
- SYNTAXS+=([$USER]="user=")
- RETVALS+=([$USER]=$NO_USER)
-HASPARAM+=([$USER]="Y")
+# the user to login in the remote ftp server
+# origin: command line paramater
+USER=70
+   NAMES[$USER]="USER"
+  VALUES[$USER]="false"
+ SYNTAXS[$USER]="user="
+# check is user designates a possible user
+IS_USER=71
+ NAMES[$IS_USER]="IS_USER"
+VALUES[$IS_USER]="false"
+CHECK1[$IS_USER]=$IS_USER
 
-# password
-PASSWORD="password"	# the name for this parameter
-NO_PASSWORD=70
-EMPTY_PASSWORD_TITLE="is password empty ?"	# checks if the password can be empty, when user = anonymous
-EMPTY_PASSSWORD_MESSAGE="password is empty !"
-EMPTY_PASSWORD_ERROR=71
- SYNTAXS+=([$PASSWORD]="password=")
- RETVALS+=([$PASSWORD]=$NO_PASSWORD)
-HASPARAM+=([$PASSWORD]="Y")
-CHECK1+=([$EMPTY_PASSWORD_TITLE]=$EMPTY_PASSWORD_MESSAGE)
-ERROR1+=([$EMPTY_PASSWORD_TITLE]=$EMPTY_PASSWORD_ERROR)
+# the password to login in the remote ftp server
+# origin: command line paramater
+PASSWORD=80
+   NAMES[$PASSWORD]="PASSWORD"
+  VALUES[$PASSWORD]="false"
+ SYNTAXS[$PASSWORD]="password="
+# check is user designates a possible user
+IS_PASSWORD=81
+ NAMES[$IS_PASSWORD]="IS_PASSWORD"
+VALUES[$IS_PASSWORD]="false"
+CHECK1[$IS_PASSWORD]=$IS_PASSWORD
 
-# service
-SERVICE="service"       # the name for this parameter
-NO_SERVICE=80
- SYNTAXS+=([$SERVICE]="service=")
- RETVALS+=([$SERVICE]=$NO_SERVICE)
-HASPARAM+=([$SERVICE]="Y")
-# service default value is set at a later time
+# the ftp service
+# origin: command line paramater
+SERVICE=90
+   NAMES[$SERVICE]="SERVICE"
+  VALUES[$SERVICE]="ftp"
+ SYNTAXS[$SERVICE]="service="
+# check if the service is enabled
+HAS_SERVICE=91
+ NAMES[$HAS_SERVICE]="HAS_SERVICE"
+VALUES[$HAS_SERVICE]="false"
+#CHECK1[$HAS_SERVICE]=$HAS_SERVICE
+
+# value used to the isSingleWord method
+SINGLE_WORD=100
+   NAMES[$SINGLE_WORD]="SINGLE_WORD"
+  VALUES[$SINGLE_WORD]="false"
+# checks if the single word value is a single word
+IS_SINGLE_WORD=101
+   NAMES[$IS_SINGLE_WORD]="SINGLE_WORD"
+  VALUES[$IS_SINGLE_WORD]="false"
 
 echoIt() {
    if [ -z $SILENCE ]; then SILENCE="---"; fi
@@ -189,59 +229,40 @@ logit()
 loggerExit()
 {
    logit
-   exit $RETVAL
+   if [ $DO_EXIT = "true" ]; then
+           exit $RETVAL
+   fi
 }
 
-# check if a program is installed
-lookiProgram() {
-        MES="      check program $PROGRAM"
-        echoIt
-        RETVAL=$NO_PROGRAM
-        if [ -z $PROGRAM ]; then
-                MES="Program undefined"
-                loggerExit
-        fi
-        whereis $PROGRAM | grep /$program > /dev/null
-        if [ ! $? -eq 0 ]; then
-                MES="Program $PROGRAM not installed"
-                loggerExit
-        fi
-}
-
-lookiPrograms() {
-        MES=""
-        echoIt
-        MES="Checking programs"
-        echoIt
-        for PROGRAM in "${PROGRAMS[@]}"
-        do
-                lookiProgram
-        done
-        MES=""
-        echoIt
+getNameValueFromId() {
+        RETVAL=$ID
+        NAME=${NAMES[$ID]}
+        VALUE=${VALUES[$ID]}
 }
 
 readCommandLineParameter() {
-        MES="      read command line parameter $COUNT $PARAMETER"
+        MES="      parameter $COUNT $PARAMETER"
         echoIt
         # read single word parameter
         for NAME in "${COMMANDS[@]}"
         do
                 if [ $NAME = $PARAMETER ]; then
                         COMMAND=$PARAMETER
+			VALUES[$COMMAND_ID]=$PARAMETER
                 fi
         done
         # read key=value parameter
-        for NAME in "${!SYNTAXS[@]}"
+        for ID in "${!SYNTAXS[@]}"
         do
+                getNameValueFromId
                 # if the value is not yet set
-                if [ -z ${VALUES[$NAME]} ]; then
-                        SYNTAX=${SYNTAXS[$NAME]}
+                if [ $VALUE = "false" ]; then
+                        SYNTAX=${SYNTAXS[$ID]}
                         # if this parameter is the syntax
                         echo $PARAMETER | grep $SYNTAX > /dev/null
                         if [ $? -eq 0 ]; then
                                 # then set the value
-                                VALUES[$NAME]=$(echo $PARAMETER | gawk -F = '{print $2}')
+                                VALUES[$ID]=$(echo $PARAMETER | gawk -F '=' '{print $2}')
                                 return
                         fi
                 fi
@@ -268,149 +289,199 @@ hasCommandLineParameters() {
         MES="hasCommandLineParameters: each checked command line parameter must have a value"
         echoIt
         # enumerate the command line parameter names
-        for NAME in "${!SYNTAXS[@]}"
+        for ID in "${!SYNTAXS[@]}"
         do
-                RETVAL=${RETVALS[$NAME]}
-                PARAM=${HASPARAM[$NAME]}
-                SYNTAX=${SYNTAXS[$NAME]}
-                VALUE=${VALUES[$NAME]}
+                getNameValueFromId
                 # if the command line set return value is not zero, check it
-                if [ $PARAM = "Y" ]; then
-                        MES="      has parameter $NAME value='$VALUE'"
-                        echoIt
-                        if [ -z $VALUE ]; then
-                                MES="command line parameter '$SYNTAX' has no value"
-                                loggerExit
-                        fi
+                if [ $VALUE = "false" ]; then
+                        MES="command line parameter '$NAME' has no value"
+                        loggerExit
                 fi
+                MES="   ($ID) ($NAME) has value ${VALUES[$ID]}"
+                echoIt
         done
         MES=""
         echoIt
 }
 
-checkCommandLineParameter() {
-        WC=$(echo $TITLE | wc -w)
-        if [ $WC -eq 0 ]; then return; fi
-        # if HASTITLE indicates it, check it
-        case $TITLE in
-		$HOST_ONLINE_TITLE) # checks if the host is online
-			MES="      ${VALUES[$HOST]} $TITLE"
-			echoIt
-                        ping -c 1 ${VALUES[$HOST]} > /dev/null
-                        if [ ! $? -eq 0 ]; then
-                                MES="${VALUES[$HOST]} $MESSAGE"
-                                loggerExit
-                        fi
+isSingleWord() {
+	if [ ${VALUES[$IS_SINGLE_WORD]} =  "false" ]; then
+		# check if value designates a single word, not a collection (like in '*')
+        	WC=$(echo ${VALUES[$SINGLE_WORD]} | wc -w)
+	        if [ $WC -eq 1 ]; then
+			VALUES[$IS_SINGLE_WORD]="true"
+        	fi
+	fi
+}
+
+checkParameters() {
+        case $ID in
+
+		# checks if the host is online
+		$HOST_ONLINE)
+			if [ $VALUE = "false" ]; then
+				MES="      ${VALUES[$HOST]} online ?"
+				echoIt
+                	        ping -c 1 ${VALUES[$HOST]} > /dev/null
+                        	if [ ! $? -eq 0 ]; then
+                                	MES="${VALUES[$HOST]} is not online"
+	                                loggerExit
+        	                fi
+				MES="      ${VALUES[$HOST]} is online"
+				echoIt
+				VALUES[$HOST_ONLINE]="true"
+			fi
                 ;;
-		$IS_LOCALDIR_TITLE)
-                        MES="      ${VALUES[$LOCALDIR]} $TITLE"
-                        echoIt
-                        # check if value designates a directory
-                        WC=$(echo ${VALUES[$LOCALDIR]} | wc -w)
-                        if [ ! $WC -eq 1 ]; then
-                                MES="'${VALUES[$LOCALDIR]}' $MESSAGE"
-                                loggerExit
-                        fi
-		;;
-                $EXIST_LOCALDIR_TITLE)
-                        MES="      ${VALUES[$LOCALDIR]} $TITLE"
-                        echoIt
-                        # check if directory exists
-                        if [ ! -d ${VALUES[$LOCALDIR]} ]; then
-                                MES="${VALUES[$LOCALDIR]} $MESSAGE"
-                                loggerExit
-                        fi
-                ;;
-		$NEW_LOCALDIR_TITLE)
-                        MES="      ${VALUES[$LOCALDIR]} $TITLE"
-                        echoIt
-			# create directory, if not exist
-			# then check if directort exist
-                        if [ ! -d ${VALUES[$LOCALDIR]} ]; then
-                                mkdir ${VALUES[$LOCALDIR]}
-                        fi
-			# seems 'double check' but create is always last check !!
-                        if [ ! -d ${VALUES[$LOCALDIR]} ]; then
-                                MES="${VALUES[$LOCALDIR]} $MESSAGE"
-                                loggerExit
-                        fi
-		;;
-                $HAS_PORT_TITLE)
-			MES="      ${VALUES[$PORT]} $TITLE"
-			echoIt
-                        nmap ${VALUES[$HOST]} | grep ${VALUES[$PORT]} > /dev/null
-                        if [ ! $? -eq 0 ]; then
-                                MES="host ${VALUES[$HOST]}:${VALUES[$PORT]} $MESSAGE"
-                                loggerExit
-                        fi
-                ;;
-		$EMPTY_PASSWORD_TITLE)
-			MES="      ${VALUES[$USER]}:${VALUES[$PASSWORD]} $TITLE"
-			echoIt
-			# when user is anonymous password can be empty
-			if [ -z ${VALUES[$PASSWORD]} ]; then
-				if [ ! ${VALUES[$USER]} = "anonymous" ]; then
-					MES="${VALUES[$USER]} $MESSAGE"
-					loggerExit
+
+		# checks if the remote host has the open port
+                $REMOTE_PORT)
+			if [ $VALUE = "false" ]; then
+	                        MES="      host ${VALUES[$HOST]} has ${VALUES[$PORT]} open ?"
+        	                echoIt
+				if [ ${VALUES[$NO_PORT]} = "true" ]; then
+					MES="      nmap checking is disables in this run"
+					echoIt
+				else
+	                	        nmap ${VALUES[$HOST]} | grep ${VALUES[$PORT]} > /dev/null
+        	                	if [ ! $? -eq 0 ]; then
+                	                	MES="${VALUES[$HOST]}:${VALUES[$PORT]} not open"
+	                	                loggerExit
+        	                	fi
+					VALUES[$REMOTE_PORT]="true"
+					MES="      host ${VALUES[$HOST]} has ${VALUES[$PORT]} open !"
+					echoIt
 				fi
 			fi
+                ;;
+
+		$IS_DIRECTORY)
+			if [ $VALUE = "false" ]; then
+	                        MES="      ${VALUES[$LOCAL_DIR]} designates a directory ?"
+        	                echoIt
+				VALUES[$SINGLE_WORD]=${VALUES[$LOCAL_DIR]}
+				VALUES[$IS_SINGLE_WORD]="false"
+				isSingleWord
+				if [ ${VALUES[$IS_SINGLE_WORD]} = "false" ]; then
+					MES="${VALUES[$LOCAL_DIR]} does not designate a directory"
+					loggerExit
+				fi
+				VALUES[$IS_DIRECTORY]="true"
+				MES="      ${VALUES[$LOCAL_DIR]} designates a directory !"
+                                echoIt
+			fi
 		;;
+
+                $DIRECTORY_EXIST)
+                        if [ $VALUE = "false" ]; then
+                                # check if directory exists,
+                                MES="      check directory ${VALUES[$LOCAL_DIR]} exist"
+                                echoIt
+                                if [ ! -d ${VALUES[$MOUNT]} ]; then
+                                        MES="${VALUES[$LOCAL_DIR]} does not exist"
+                                        loggerExit
+                                fi
+                                VALUES[$DIRECTORY_EXIST]="true"
+                                MES="         ${VALUES[$LOCAL_DIR]} directory exist"
+                                echoIt
+                        fi
+                ;;
+
+                $DIRECTORY_CREATE)
+                        if [ $VALUE = "false" ]; then
+                                # create directory
+                                MES="      create directory ${VALUES[$LOCAL_DIR]}"
+                                echoIt
+                                if [ ! -d ${VALUES[$LOCAL_DIR]} ]; then
+                                        mkdir ${VALUES[$LOCAL_DIR]} > /dev/null 2> /dev/null
+                                        if [ ! -d ${VALUES[$LOCAL_DIR]} ]; then
+                                                MES="could not create directory ${VALUES[$LOCAL_DIR]}"
+                                                loggerExit
+                                        fi
+                                        VALUES[$DIRECTORY_LOCAL_DIR]="true"
+                                        MES="         ${VALUES[$LOCAL_DIR]} directory created"
+                                        echoIt
+                                fi
+                        fi
+                ;;
+
+		$IS_REMOTE_DIR)
+			if [ $VALUE = "false" ]; then
+                               MES="      ${VALUES[$REMOTE_DIR]} designates a directory ?"
+                                echoIt
+                                VALUES[$SINGLE_WORD]=${VALUES[$REMOTE_DIR]}
+                                VALUES[$IS_SINGLE_WORD]="false"
+                                isSingleWord
+                                if [ ${VALUES[$IS_SINGLE_WORD]} = "false" ]; then
+                                        MES="${VALUES[$REMOTE_DIR]} does not designate a directory"
+                                        loggerExit
+                                fi
+                                MES="      ${VALUES[$REMOTE_DIR]} designates a directory"
+                                echoIt
+				VALUES[$IS_REMOTE_DIR]="true"
+			fi
+		;;
+
+                $IS_USER)
+                        if [ $VALUE = "false" ]; then
+                               MES="      ${VALUES[$USER]} designates a single user ?"
+                                echoIt
+                                VALUES[$SINGLE_WORD]=${VALUES[$USER]}
+                                VALUES[$IS_SINGLE_WORD]="false"
+                                isSingleWord
+                                if [ ${VALUES[$IS_SINGLE_WORD]} = "false" ]; then
+                                        MES="${VALUES[$USER]} does not designates a single user"
+                                        loggerExit
+                                fi
+                                MES="      ${VALUES[$USER]} designates a single user"
+                                echoIt
+                                VALUES[$IS_USER]="true"
+                        fi
+                ;;
+
+		$IS_PASSWORD)
+			if [ $VALUE = "false" ]; then
+				MES="      ${VALUES[$PASSWORD]} designates a single password ?"
+				echoIt
+                                # when user is anonymous password can be empty
+                                if [ -z ${VALUES[$PASSWORD]} ]; then
+                                        if [ ! ${VALUES[$USER]} = "anonymous" ]; then
+                                                MES="empty password with user ${VALUES[$USER]} not allowed"
+                                                loggerExit
+                                        fi
+                                else
+	                                VALUES[$SINGLE_WORD]=${VALUES[$PASSWORD]}
+        	                        VALUES[$IS_SINGLE_WORD]="false"
+                	                isSingleWord
+                        	        if [ ${VALUES[$IS_SINGLE_WORD]} = "false" ]; then
+                                	        MES="${VALUES[$USER]} does not designates a single password"
+                                        	loggerExit
+	                                fi
+				fi
+				MES="      password ok !"
+				echoIt
+				VALUES[$IS_PASSWORD]="true"
+			fi
+		;;
+
         esac
 }
 
-check1() {
-        MES="check1"
-        echoIt
-        for TITLE in "${!CHECK1[@]}"
-        do
-                MESSAGE=${CHECK1[$TITLE]}
-                RETVAL=${ERROR1[$TITLE]}
-                checkCommandLineParameter
-        done
-        MES=""
-        echoIt
-}
+# check the parameters before the script action
+checks() {
+        if [ ! ${#CHECKS[@]} -eq 0 ]; then
+                MES="--> check ${CHECKS[0]}"
+                echoIt
 
-check2() {
-        MES="check2"
-        echoIt
-        for TITLE in "${!CHECK2[@]}"
-        do
-                MESSAGE=${CHECK2[$TITLE]}
-                RETVAL=${ERROR2[$TITLE]}
-                checkCommandLineParameter
-        done
-        MES=""
-        echoIt
-}
-
-check3() {
-        MES="check3"
-        echoIt
-        for TITLE in "${!CHECK3[@]}"
-        do
-                MESSAGE=${CHECK3[$TITLE]}
-                RETVAL=${ERROR3[$TITLE]}
-                checkCommandLineParameter
-        done
-        MES=""
-        echoIt
-}
-
-# show all values
-showValues() {
-        MES="showValues"
-        echoIt
-        if [ $SILENCE = 'silence' ] || [ $SILENCE = 'SILENCE' ]; then
-                echo "      silenced"
+                for ID in "${CHECKS[@]}"
+                do
+                        getNameValueFromId
+                        MES="   check ($ID) ($NAME)"
+                        echoIt
+                        checkParameters
+                done
+                MES=""
+                echoIt
         fi
-        if [ ! -z $COMMAND ]; then echo "      command $COMMAND"; fi
-        for NAME in "${!SYNTAXS[@]}"
-        do
-                echo "      $NAME ${VALUES[$NAME]}"
-        done
-        MES=""
-        echoIt
 }
 
 usage() {
@@ -422,6 +493,7 @@ usage() {
         echo "  --> publish, sync local dir to ftp server"
         echo "  -->  backup, sync ftp server to local dir"
         echo "  -->    show, do nothing, show given parameter values"
+	echo "  -->  checks, shows check order"
         echo "  --> silence, do not echo each action"
         echo "  -->   usage, show this message"
         echo ""
@@ -433,39 +505,102 @@ usage() {
         echo "  -->      user=, the user to connect to the ftp server"
         echo "  -->  password=, the password used by the user, user anonymous has none"
         echo "  -->      port=, the port for the ftp service, default 21"
+	echo "  -->    noport=, when set 'true' as in noport=true, no nmap port checking will be done"
         echo
         TEMP="lftp.sh silence publish tag='WEBSITE' host='ftp.somehost.somedomain'"
         echo "$TEMP localdir='/data/websites/cursuslinux' remotedir='/public_html' user='theuser' password='password'"
 }
 
+# show all values
+showValues() {
+        echo "showValues"
+        if [ $SILENCE = 'silence' ] || [ $SILENCE = 'SILENCE' ]; then
+                echo "      silenced"
+        fi
+        echo "" | gawk '{printf("\t\t%3s %20s %50s %10s\n","ID","NAME","VALUE","SYNTAX");}'
+        for ID in "${!NAMES[@]}"
+        do
+                getNameValueFromId
+                SYNTAX=${SYNTAXS[$ID]}
+                if [ ! -z $SYNTAX ]; then
+                        TMP="$ID:$NAME:$VALUE:$SYNTAX"
+                        echo "$TMP" | gawk -F ':' '{printf("\t\t%3d %20s %50s %10s\n",$1,$2,$3,$4);}'
+
+                else
+                        TMP="$ID:$NAME:$VALUE"
+                        echo "$TMP" | gawk -F ':' '{printf("\t\t%3d %20s %50s\n",$1,$2,$3);}'
+
+                fi
+        done
+        MES=""
+        echoIt
+}
+
+showChecks() {
+        if [ ! ${#CHECKS[@]} -eq 0 ]; then
+                echo "--> checks ${CHECKS[0]}"
+                for ID in "${CHECKS[@]}"
+                do
+                        echo "$ID ${NAMES[$ID]}" | gawk '{printf("\t%d %s\n",$1,$2);}'
+                done
+        fi
+}
+
+disableExitChecks() {
+        DO_EXIT="false"
+        CHECKS=(${CHECK1[@]})
+        checks
+        CHECKS=(${CHECK2[@]})
+        checks
+        CHECKS=(${CHECK3[@]})
+        checks
+        CHECKS=(${CHECK4[@]})
+        checks
+}
+
 # be silent, will only use logger (and problably some difficult to avoid empty lines)
 SILENCE=$1
+if [ -z $SILENCE ]; then SILENCE="---"; fi
+if [ $SILENCE = "silence" ]; then shift; fi
+if [ $SILENCE = "SILENCE" ]; then shift; fi
+PARAMS=("$@")
 
+TAG="LFTP"
 MES="$SCRIPT version $VERSION from $DATE"
 logit
 
-lookiPrograms
+if [ ! -x /usr/bin/isexecutable.sh ]; then
+        RETVAL=$NO_ISEXECUTABLE
+        MES="isexecutable not installed"
+        loggerExit
+fi
+
+isexecutable.sh silence $TAG "lftp" "nmap" "ping" "clean.sh"
+if [ ! $? -eq 0 ]; then
+        RETVAL=$NO_PROGRAM
+        MES="one or more programs not installed"
+        loggerExit
+fi
 readCommandLineParameters
 
 # set default values if needed
-if [ -z ${VALUES[$TNAME]} ]; then VALUES[$TNAME]="LFTP"; fi
-if [ -z ${VALUES[$SERVICE]} ]; then VALUES[$SERVICE]="ftp"; fi
 if [ -z ${VALUES[$PORT]} ];  then VALUES[$PORT]=21; fi
 # if a tag is given then use it
 TAG=${VALUES[$TNAME]}
+
+echo "command = $COMMAND"
 
 case $COMMAND in
     # publish files from local dir to ftp server
     publish)
 	hasCommandLineParameters
-        check1
-	check2
-
+        CHECKS=(${CHECK1[@]})
+        checks
 	MES="publishing ${VALUES[$LOCALDIR]} to ${VALUES[$HOST]}:${VALUES[$REMOTEDIR]}"
 	echoIt
 
         # remove all backup files first
-        clean.sh silence tag=$TAG directory=${VALUES[$LOCALDIR]}
+        clean.sh silence tag=$TAG directory=${VALUES[$LOCAL_DIR]}
 
         # do the syncing, from local to host
         FTPURL="ftp://${VALUES[$USER]}:${VALUES[$PASSWORD]}@${VALUES[$HOST]}"
@@ -473,17 +608,16 @@ case $COMMAND in
         lftp -c "set ftp:list-options -a;
         set ssl:verify-certificate no
         open '$FTPURL';
-        lcd ${VALUES[$LOCALDIR]};
-        cd ${VALUES[$REMOTEDIR]};
+        lcd ${VALUES[$LOCAL_DIR]};
+        cd ${VALUES[$REMOTE_DIR]};
         mirror --reverse $DELETE --verbose "
 
     ;;
     # sync remote dir from ftp server to local dir
     backup)
         hasCommandLineParameters
-	check1
-	check2
-	check3
+        CHECKS=(${CHECK1[@]})
+        checks
 
         # do the syncing, from host to local
         FTPURL="ftp://${VALUES[$USER]}:${VALUES[$PASSWORD]}@${VALUES[$HOST]}"
@@ -491,13 +625,25 @@ case $COMMAND in
         lftp -c "set ftp:list-options -a;
         set ssl:verify-certificate no
         open '$FTPURL';
-        lcd ${VALUES[$LOCALDIR]};
-        cd ${VALUES[$REMOTEDIR]};
+        lcd ${VALUES[$LOCAL_DIR]};
+        cd ${VALUES[$REMOTE_DIR]};
         mirror $DELETE --verbose "
 
     ;;
     show)
+	disableExitChecks
         showValues
+    ;;
+    checks)
+	disableExitChecks
+        CHECKS=(${CHECK1[@]})
+        showChecks
+        CHECKS=(${CHECK2[@]})
+        showChecks
+        CHECKS=(${CHECK3[@]})
+        showChecks
+        CHECKS=(${CHECK4[@]})
+	showChecks
     ;;
     usage)
         usage
