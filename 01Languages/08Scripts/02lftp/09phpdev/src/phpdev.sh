@@ -1,7 +1,7 @@
 #!/bin/bash
 # programmer: De Dauw Valentijn
 #       date: 2016/09/06
-# sync /data/07Software/04php/06dev/01session/php naar phptest server
+# sync /aegis/04php naar phptest server
 #
 # arguments                         default
 # TAG        tag=thetag             LFTP
@@ -12,15 +12,19 @@
 # USER       user=theuser           www-data
 # password   password=thepassword   www-datapw
 #
-# sync naar phpdev////var/www/html =============================================================
+# sync naar phpdev:///var/www/html =============================================================
+#
+# history
+# 0.1.8 implementing isexecutable.sh
+# 0.2.3 adapted to new lftp.sh
 
-SCRIPT="lftp.publish.sh"
-VERSION="0.1.7"
+SCRIPT="phpdev.sh"
+VERSION="0.2.3"
 DATE="2019/02/02"
 
-TAG="PHPDEV"
 RETVAL=0
-NO_PROGRAM=1
+NO_ISEXECUTABLE=1
+NO_PROGRAM=2
 
 echoIt() {
    if [ -z $SILENCE ]; then SILENCE="---"; fi
@@ -44,25 +48,30 @@ loggerExit()
    exit $RETVAL
 }
 
-lookiProgram() {
-	RETVAL=$NO_PROGRAM
-	if [ -z $PROGRAM ]; then
-		MES2="Program undefined"
-		loggerExit
-	fi
-	whereis $PROGRAM | grep /$PROGRAM > /dev/null
-        if [ ! $? -eq 0 ]; then
-                MES2="Program $PROGRAM not installed"
-                loggerExit
-        fi
-}
-
 SILENCE=$1
+if [ -z $SILENCE ]; then SILENCE="---"; fi
+if [ $SILENCE = "silence" ]; then shift; fi
+if [ $SILENCE = "SILENCE" ]; then shift; fi
+PARAMS=("$@")
 
-PROGRAM="lftp.sh"
-lookiProgram
+COMMAND=$1
+if [ -z $COMMAND ]; then COMMAND="publish"; fi
 
-MES0="version $VERSION from $DATE"
+TAG="PHPDEV"
+MES="version $VERSION from $DATE"
 logit
 
-lftp.sh $SILENCE publish tag=$TAG host="phptest" localdir="/aegis/04php" remotedir="/var/www/html" user="www-data" password="www-datapw"
+if [ ! -x /usr/bin/isexecutable.sh ]; then
+        RETVAL=$NO_ISEXECUTABLE
+        MES="isexecutable.sh not installed"
+        loggerExit
+fi
+
+isexecutable.sh silence $TAG "lftp.sh"
+if [ !$? -eq 0 ]; then
+        RETVAL=$NO_PROGRAM
+        MES="one or more executables not installed"
+        loggerExit
+fi
+
+lftp.sh $SILENCE $COMMAND tag=$TAG host="phptest" localdir="/aegis/04php" remotedir="/var/www/html" user="www-data" password="www-datapw"
